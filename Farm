@@ -31,7 +31,7 @@ local function hasQuest()
 	return false
 end
 
--- 📜 GET QUEST NPC
+-- 📜 QUEST NPC
 local function getQuestNPC()
 	for _,v in pairs(workspace:GetDescendants()) do
 		if v:IsA("Model")
@@ -42,9 +42,9 @@ local function getQuestNPC()
 	end
 end
 
--- 📜 AUTO QUEST (CHỈ KHI CHƯA CÓ)
+-- 📜 AUTO QUEST
 local function autoQuest()
-	if hasQuest() then return end -- 🔥 FIX CHÍNH
+	if hasQuest() then return end
 	
 	local npc = getQuestNPC()
 	if not npc then return end
@@ -62,27 +62,16 @@ local function autoQuest()
 	end)
 end
 
--- LOOP QUEST
-task.spawn(function()
-	while true do
-		task.wait(2)
-		if FARM then
-			autoQuest()
-		end
-	end
-end)
-
--- 👹 FIND NPC (QUÁI)
-local function getNPC(char)
+-- 👹 CHỈ TÌM THIEF
+local function getThief(char)
 	local nearest, dist = nil, math.huge
 	
 	for _,v in pairs(workspace:GetDescendants()) do
 		if v:IsA("Model")
+		and v.Name == "Thief"
 		and v:FindFirstChild("Humanoid")
 		and v:FindFirstChild("HumanoidRootPart")
-		and v.Humanoid.Health > 0
-		and not Players:GetPlayerFromCharacter(v)
-		and not string.find(v.Name:lower(), "quest") then -- ❌ bỏ NPC quest
+		and v.Humanoid.Health > 0 then
 			
 			local d = (char.HumanoidRootPart.Position - v.HumanoidRootPart.Position).Magnitude
 			
@@ -103,7 +92,17 @@ local function attack()
 	VirtualUser:Button1Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
 end
 
--- LOOP FARM
+-- QUEST LOOP
+task.spawn(function()
+	while true do
+		task.wait(2)
+		if FARM then
+			autoQuest()
+		end
+	end
+end)
+
+-- FARM LOOP
 task.spawn(function()
 	local bv
 	
@@ -118,12 +117,11 @@ task.spawn(function()
 		local char = player.Character
 		if not char or not char:FindFirstChild("HumanoidRootPart") then continue end
 		
-		local root = char.HumanoidRootPart
-		
-		-- 🔥 nếu chưa có quest → không farm
+		-- ❗ chưa có quest thì đợi
 		if not hasQuest() then continue end
 		
-		local npc = getNPC(char)
+		local root = char.HumanoidRootPart
+		local npc = getThief(char)
 		
 		if npc then
 			local tRoot = npc.HumanoidRootPart
@@ -134,8 +132,8 @@ task.spawn(function()
 				bv.Parent = root
 			end
 			
-			local targetPos = tRoot.Position + Vector3.new(0, HEIGHT, 0)
-			bv.Velocity = (targetPos - root.Position) * 6
+			local pos = tRoot.Position + Vector3.new(0, HEIGHT, 0)
+			bv.Velocity = (pos - root.Position) * 6
 			
 			root.CFrame = CFrame.new(root.Position, tRoot.Position)
 			
@@ -149,7 +147,7 @@ end)
 
 -- TOGGLE
 Tab:CreateToggle({
-	Name = "Auto Farm + Quest FIX",
+	Name = "Auto Farm Thief",
 	CurrentValue = false,
 	Callback = function(Value)
 		FARM = Value
