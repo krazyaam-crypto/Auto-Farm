@@ -1,6 +1,6 @@
 pcall(function()
-	if game.CoreGui:FindFirstChild("AutoFarmUI") then
-		game.CoreGui.AutoFarmUI:Destroy()
+	if game.CoreGui:FindFirstChild("KienHub_BH") then
+		game.CoreGui.KienHub_BH:Destroy()
 	end
 end)
 
@@ -8,97 +8,152 @@ local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
 -- SETTINGS
-local ENABLE = false
-local MAGNET_RANGE = 10
-local ATTACK_DELAY = 0.05 -- nhanh hơn
-local HEIGHT = 12 -- bay cao
+local FARM = false
+local HEIGHT = 6
+local RANGE = 20
+local DELAY = 0.07
+local MAGNET = 10
 
 -- GUI
 local gui = Instance.new("ScreenGui", game.CoreGui)
-gui.Name = "AutoFarmUI"
+gui.Name = "KienHub_BH"
 
 local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0,200,0,100)
+frame.Size = UDim2.new(0,260,0,160)
 frame.Position = UDim2.new(0.05,0,0.3,0)
-frame.BackgroundColor3 = Color3.fromRGB(20,20,20)
+frame.BackgroundColor3 = Color3.fromRGB(18,18,18)
 frame.Active = true
 frame.Draggable = true
 Instance.new("UICorner", frame)
 
+-- Rainbow viền
+local stroke = Instance.new("UIStroke", frame)
+stroke.Thickness = 3
+task.spawn(function()
+	while true do
+		for i=0,1,0.01 do
+			stroke.Color = Color3.fromHSV(i,1,1)
+			task.wait()
+		end
+	end
+end)
+
+-- TITLE
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1,0,0.25,0)
+title.BackgroundTransparency = 1
+title.Text = "Trung Kien Hub"
+title.TextColor3 = Color3.new(1,1,1)
+title.Font = Enum.Font.GothamBold
+title.TextScaled = true
+
+-- BUTTON
 local btn = Instance.new("TextButton", frame)
-btn.Size = UDim2.new(0.9,0,0.6,0)
-btn.Position = UDim2.new(0.05,0,0.2,0)
+btn.Size = UDim2.new(0.9,0,0.35,0)
+btn.Position = UDim2.new(0.05,0,0.4,0)
 btn.Text = "AUTO FARM: OFF"
 btn.BackgroundColor3 = Color3.fromRGB(40,40,40)
 btn.TextColor3 = Color3.new(1,1,1)
 btn.Font = Enum.Font.GothamBold
 Instance.new("UICorner", btn)
 
--- Tìm NPC gần nhất
-local function getNearestNPC(char)
-	local nearest, dist = nil, math.huge
+-- CLOSE
+local close = Instance.new("TextButton", frame)
+close.Size = UDim2.new(0,30,0,30)
+close.Position = UDim2.new(1,-35,0,5)
+close.Text = "X"
+close.BackgroundColor3 = Color3.fromRGB(80,0,0)
+
+close.MouseButton1Click:Connect(function()
+	frame.Visible = false
+end)
+
+-- CACHE NPC
+local cached = {}
+
+task.spawn(function()
+	while true do
+		task.wait(1)
+		cached = {}
+		
+		for _,v in pairs(workspace:GetChildren()) do
+			if v:IsA("Model")
+			and v:FindFirstChild("Humanoid")
+			and v:FindFirstChild("HumanoidRootPart")
+			and v.Humanoid.Health > 0
+			and not Players:GetPlayerFromCharacter(v) then
+				
+				table.insert(cached, v)
+			end
+		end
+	end
+end)
+
+-- NEAREST
+local function getTarget(char)
+	local near,dist=nil,math.huge
 	
-	for _,v in pairs(workspace:GetDescendants()) do
-		if v:IsA("Model")
-		and v:FindFirstChild("Humanoid")
-		and v:FindFirstChild("HumanoidRootPart")
-		and v.Humanoid.Health > 0
-		and not Players:GetPlayerFromCharacter(v) then
-			
-			local d = (char.HumanoidRootPart.Position - v.HumanoidRootPart.Position).Magnitude
-			if d < dist then
-				dist = d
-				nearest = v
+	for _,v in pairs(cached) do
+		if v and v:FindFirstChild("HumanoidRootPart") then
+			local d=(char.HumanoidRootPart.Position - v.HumanoidRootPart.Position).Magnitude
+			if d<dist then
+				dist=d
+				near=v
 			end
 		end
 	end
 	
-	return nearest
+	return near
 end
 
--- LOOP FARM (ổn định)
+-- LOOP
 task.spawn(function()
+	local bv
+	
 	while true do
-		task.wait(ATTACK_DELAY)
+		task.wait(DELAY)
 		
-		if not ENABLE then continue end
+		if not FARM then 
+			if bv then bv:Destroy() bv=nil end
+			continue 
+		end
 		
 		local char = player.Character
 		if not char or not char:FindFirstChild("HumanoidRootPart") then continue end
 		
 		local root = char.HumanoidRootPart
-		local target = getNearestNPC(char)
+		local target = getTarget(char)
 		
-		if target and target:FindFirstChild("HumanoidRootPart") then
+		if target then
 			local tRoot = target.HumanoidRootPart
 			
-			-- 🕊️ bay trên đầu
-			root.CFrame = tRoot.CFrame * CFrame.new(0, HEIGHT, 0)
+			-- bay mượt
+			if not bv then
+				bv = Instance.new("BodyVelocity")
+				bv.MaxForce = Vector3.new(1e9,1e9,1e9)
+				bv.Parent = root
+			end
 			
-			-- 🧲 gom quái
-			for _,v in pairs(workspace:GetDescendants()) do
-				if v:IsA("Model")
-				and v ~= target
-				and v:FindFirstChild("HumanoidRootPart")
-				and v:FindFirstChild("Humanoid")
-				and v.Humanoid.Health > 0
-				and not Players:GetPlayerFromCharacter(v) then
-					
-					if (v.HumanoidRootPart.Position - tRoot.Position).Magnitude < MAGNET_RANGE then
-						v.HumanoidRootPart.CFrame = tRoot.CFrame * CFrame.new(math.random(-3,3),0,math.random(-3,3))
+			local pos = tRoot.Position + Vector3.new(0,HEIGHT,0)
+			bv.Velocity = (pos - root.Position) * 6
+			
+			-- nhìn
+			root.CFrame = CFrame.new(root.Position, tRoot.Position)
+			
+			-- hitbox
+			tRoot.Size = Vector3.new(RANGE,RANGE,RANGE)
+			tRoot.CanCollide = false
+			
+			-- magnet
+			for _,v in pairs(cached) do
+				if v~=target and v:FindFirstChild("HumanoidRootPart") then
+					if (v.HumanoidRootPart.Position - tRoot.Position).Magnitude < MAGNET then
+						v.HumanoidRootPart.CFrame = tRoot.CFrame
 					end
 				end
 			end
 			
-			-- 🎯 nhìn vào quái
-			root.CFrame = CFrame.new(root.Position, tRoot.Position)
-			
-			-- 📏 mở rộng hitbox (đánh xa hơn)
-			tRoot.Size = Vector3.new(20,20,20)
-			tRoot.Transparency = 0.5
-			tRoot.CanCollide = false
-			
-			-- ⚡ đánh nhanh
+			-- đánh
 			pcall(function()
 				mouse1click()
 			end)
@@ -106,8 +161,8 @@ task.spawn(function()
 	end
 end)
 
--- BUTTON
+-- TOGGLE
 btn.MouseButton1Click:Connect(function()
-	ENABLE = not ENABLE
-	btn.Text = "AUTO FARM: "..(ENABLE and "ON" or "OFF")
+	FARM = not FARM
+	btn.Text = "AUTO FARM: "..(FARM and "ON" or "OFF")
 end)
