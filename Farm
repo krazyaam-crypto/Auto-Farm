@@ -1,107 +1,77 @@
--- LOAD RAYFIELD
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+repeat task.wait() until game:IsLoaded()
 
-local Window = Rayfield:CreateWindow({
-	Name = "Trung Kien Hub",
-	LoadingTitle = "Loading...",
-	LoadingSubtitle = "by Kien",
-	ConfigurationSaving = {
-		Enabled = false
-	}
-})
+pcall(function()
+	if game.CoreGui:FindFirstChild("KienChestFarm") then
+		game.CoreGui.KienChestFarm:Destroy()
+	end
+end)
 
-local Tab = Window:CreateTab("Farm", 4483362458)
-
--- SERVICES
 local Players = game:GetService("Players")
-local VirtualUser = game:GetService("VirtualUser")
-
 local player = Players.LocalPlayer
 
--- SETTINGS
 local FARM = false
-local HEIGHT = 6
-local DELAY = 0.03
 
--- GET NPC
-local function getNPC(char)
-	local nearest, dist = nil, math.huge
-	
+-- UI
+local gui = Instance.new("ScreenGui", game.CoreGui)
+gui.Name = "KienChestFarm"
+
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0,220,0,120)
+frame.Position = UDim2.new(0.05,0,0.3,0)
+frame.BackgroundColor3 = Color3.fromRGB(20,20,20)
+frame.Active = true
+frame.Draggable = true
+Instance.new("UICorner", frame)
+
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1,0,0.3,0)
+title.BackgroundTransparency = 1
+title.Text = "Chest Farm"
+title.TextColor3 = Color3.new(1,1,1)
+title.Font = Enum.Font.GothamBold
+title.TextScaled = true
+
+local btn = Instance.new("TextButton", frame)
+btn.Size = UDim2.new(0.8,0,0.4,0)
+btn.Position = UDim2.new(0.1,0,0.5,0)
+btn.Text = "FARM: OFF"
+btn.BackgroundColor3 = Color3.fromRGB(40,40,40)
+btn.TextColor3 = Color3.new(1,1,1)
+btn.Font = Enum.Font.GothamBold
+Instance.new("UICorner", btn)
+
+-- tìm rương
+local function getChest()
 	for _,v in pairs(workspace:GetDescendants()) do
-		if v:IsA("Model")
-		and v:FindFirstChild("Humanoid")
-		and v:FindFirstChild("HumanoidRootPart")
-		and v.Humanoid.Health > 0
-		and not Players:GetPlayerFromCharacter(v) then
-			
-			local d = (char.HumanoidRootPart.Position - v.HumanoidRootPart.Position).Magnitude
-			
-			if d < dist then
-				dist = d
-				nearest = v
+		if v:IsA("Model") and string.find(v.Name:lower(),"chest") then
+			if v:FindFirstChild("HumanoidRootPart") then
+				return v
 			end
 		end
 	end
-	
-	return nearest
 end
 
--- ATTACK (game input thật)
-local function attack()
-	VirtualUser:Button1Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
-	task.wait()
-	VirtualUser:Button1Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
-end
-
--- LOOP
+-- loop farm
 task.spawn(function()
-	local bv
-	
 	while true do
-		task.wait(DELAY)
+		task.wait(0.2)
 		
-		if not FARM then
-			if bv then bv:Destroy() bv=nil end
-			continue
-		end
+		if not FARM then continue end
 		
 		local char = player.Character
 		if not char or not char:FindFirstChild("HumanoidRootPart") then continue end
 		
 		local root = char.HumanoidRootPart
-		local npc = getNPC(char)
+		local chest = getChest()
 		
-		if npc then
-			local tRoot = npc.HumanoidRootPart
-			
-			-- BAY MƯỢT (không rớt)
-			if not bv then
-				bv = Instance.new("BodyVelocity")
-				bv.MaxForce = Vector3.new(1e9,1e9,1e9)
-				bv.Parent = root
-			end
-			
-			local targetPos = tRoot.Position + Vector3.new(0, HEIGHT, 0)
-			bv.Velocity = (targetPos - root.Position) * 6
-			
-			-- NHÌN NPC
-			root.CFrame = CFrame.new(root.Position, tRoot.Position)
-			
-			-- HITBOX NHẸ
-			tRoot.Size = Vector3.new(10,10,10)
-			tRoot.CanCollide = false
-			
-			-- ⚡ ATTACK REAL
-			attack()
+		if chest and chest:FindFirstChild("HumanoidRootPart") then
+			root.CFrame = chest.HumanoidRootPart.CFrame + Vector3.new(0,3,0)
 		end
 	end
 end)
 
--- TOGGLE
-Tab:CreateToggle({
-	Name = "Auto Farm NPC",
-	CurrentValue = false,
-	Callback = function(Value)
-		FARM = Value
-	end
-})
+-- toggle
+btn.MouseButton1Click:Connect(function()
+	FARM = not FARM
+	btn.Text = "FARM: "..(FARM and "ON" or "OFF")
+end)
