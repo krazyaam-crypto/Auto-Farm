@@ -1,7 +1,7 @@
 repeat task.wait() until game:IsLoaded()
 
--- LOAD UI
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+-- LOAD RAYFIELD (FIX)
+local Rayfield = loadstring(game:HttpGet('https://raw.githubusercontent.com/shlexware/Rayfield/main/source'))()
 
 local Window = Rayfield:CreateWindow({
 	Name = "Trung Kien Hub",
@@ -10,20 +10,18 @@ local Window = Rayfield:CreateWindow({
 	ConfigurationSaving = {Enabled = false}
 })
 
-local Tab = Window:CreateTab("Farm")
+local Tab = Window:CreateTab("Farm", 4483362458)
 
--- SERVICES
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
--- SAFE COMBAT
+-- COMBAT SAFE
 local Combat
 pcall(function()
 	local cf = require(player.PlayerScripts:WaitForChild("CombatFramework"))
 	Combat = cf.activeController
 end)
 
--- SETTINGS
 local FARM = false
 local HEIGHT = 6
 
@@ -91,7 +89,7 @@ task.spawn(function()
 	end
 end)
 
--- TOGGLE
+-- 🔥 NÚT (CHẮC CHẮN HIỆN)
 Tab:CreateToggle({
 	Name = "Auto Farm NPC",
 	CurrentValue = false,
@@ -100,12 +98,10 @@ Tab:CreateToggle({
 	end
 })
 
--- 🔥 THÔNG BÁO LOAD XONG
+-- 🔥 NOTIFY
 task.wait(1)
-
 Rayfield:Notify({
 	Title = "Trung Kien Hub",
 	Content = "Script Load 100%",
-	Duration = 5,
-	Image = 4483362458
+	Duration = 5
 })
