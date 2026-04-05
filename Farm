@@ -1,72 +1,30 @@
-repeat task.wait() until game:IsLoaded()
+-- LOAD RAYFIELD
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
-pcall(function()
-	if game.CoreGui:FindFirstChild("KienFarm") then
-		game.CoreGui.KienFarm:Destroy()
-	end
-end)
+local Window = Rayfield:CreateWindow({
+	Name = "Trung Kien Hub",
+	LoadingTitle = "Loading...",
+	LoadingSubtitle = "by Kien",
+	ConfigurationSaving = {
+		Enabled = false
+	}
+})
 
+local Tab = Window:CreateTab("Farm", 4483362458)
+
+-- SERVICES
 local Players = game:GetService("Players")
-local VirtualInputManager = game:GetService("VirtualInputManager")
+local VirtualUser = game:GetService("VirtualUser")
 
 local player = Players.LocalPlayer
 
 -- SETTINGS
 local FARM = false
 local HEIGHT = 6
+local DELAY = 0.03
 
--- COMBAT (damage thật)
-local Combat
-pcall(function()
-	local cf = require(player.PlayerScripts:WaitForChild("CombatFramework"))
-	Combat = cf.activeController
-end)
-
--- UI
-local gui = Instance.new("ScreenGui", game.CoreGui)
-gui.Name = "KienFarm"
-
-local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0,260,0,150)
-frame.Position = UDim2.new(0.05,0,0.3,0)
-frame.BackgroundColor3 = Color3.fromRGB(20,20,20)
-frame.Active = true
-frame.Draggable = true
-Instance.new("UICorner", frame)
-
--- rainbow viền
-local stroke = Instance.new("UIStroke", frame)
-stroke.Thickness = 3
-task.spawn(function()
-	while true do
-		for i=0,1,0.01 do
-			stroke.Color = Color3.fromHSV(i,1,1)
-			task.wait()
-		end
-	end
-end)
-
--- title
-local title = Instance.new("TextLabel", frame)
-title.Size = UDim2.new(1,0,0.3,0)
-title.BackgroundTransparency = 1
-title.Text = "Trung Kien Farm"
-title.TextColor3 = Color3.new(1,1,1)
-title.Font = Enum.Font.GothamBold
-title.TextScaled = true
-
--- button
-local btn = Instance.new("TextButton", frame)
-btn.Size = UDim2.new(0.8,0,0.35,0)
-btn.Position = UDim2.new(0.1,0,0.5,0)
-btn.Text = "FARM: OFF"
-btn.BackgroundColor3 = Color3.fromRGB(40,40,40)
-btn.TextColor3 = Color3.new(1,1,1)
-btn.Font = Enum.Font.GothamBold
-Instance.new("UICorner", btn)
-
--- tìm quái gần (không phải player)
-local function getMob(char)
+-- GET NPC
+local function getNPC(char)
 	local nearest, dist = nil, math.huge
 	
 	for _,v in pairs(workspace:GetDescendants()) do
@@ -88,19 +46,19 @@ local function getMob(char)
 	return nearest
 end
 
--- ⌨️ nhấn phím thật
-local function pressKey(key)
-	VirtualInputManager:SendKeyEvent(true, key, false, game)
+-- ATTACK (game input thật)
+local function attack()
+	VirtualUser:Button1Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
 	task.wait()
-	VirtualInputManager:SendKeyEvent(false, key, false, game)
+	VirtualUser:Button1Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
 end
 
--- loop farm
+-- LOOP
 task.spawn(function()
 	local bv
 	
 	while true do
-		task.wait(0.05)
+		task.wait(DELAY)
 		
 		if not FARM then
 			if bv then bv:Destroy() bv=nil end
@@ -111,41 +69,39 @@ task.spawn(function()
 		if not char or not char:FindFirstChild("HumanoidRootPart") then continue end
 		
 		local root = char.HumanoidRootPart
+		local npc = getNPC(char)
 		
-		-- 🔥 luôn bật aura + cầm kiếm
-		pressKey(Enum.KeyCode.J)
-		pressKey(Enum.KeyCode.Three)
-		
-		local mob = getMob(char)
-		
-		if mob then
-			local tRoot = mob.HumanoidRootPart
+		if npc then
+			local tRoot = npc.HumanoidRootPart
 			
-			-- bay mượt
+			-- BAY MƯỢT (không rớt)
 			if not bv then
 				bv = Instance.new("BodyVelocity")
 				bv.MaxForce = Vector3.new(1e9,1e9,1e9)
 				bv.Parent = root
 			end
 			
-			local pos = tRoot.Position + Vector3.new(0, HEIGHT, 0)
-			bv.Velocity = (pos - root.Position) * 6
+			local targetPos = tRoot.Position + Vector3.new(0, HEIGHT, 0)
+			bv.Velocity = (targetPos - root.Position) * 6
 			
+			-- NHÌN NPC
 			root.CFrame = CFrame.new(root.Position, tRoot.Position)
 			
-			-- hitbox + damage thật
-			if Combat then
-				Combat.hitboxMagnitude = 40
-				pcall(function()
-					Combat:attack()
-				end)
-			end
+			-- HITBOX NHẸ
+			tRoot.Size = Vector3.new(10,10,10)
+			tRoot.CanCollide = false
+			
+			-- ⚡ ATTACK REAL
+			attack()
 		end
 	end
 end)
 
--- button toggle
-btn.MouseButton1Click:Connect(function()
-	FARM = not FARM
-	btn.Text = "FARM: "..(FARM and "ON" or "OFF")
-end)
+-- TOGGLE
+Tab:CreateToggle({
+	Name = "Auto Farm NPC",
+	CurrentValue = false,
+	Callback = function(Value)
+		FARM = Value
+	end
+})
