@@ -1,41 +1,108 @@
+-- LOAD RAYFIELD
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local Window = Rayfield:CreateWindow({
+	Name = "Trung Kien Hub",
+	LoadingTitle = "Loading...",
+	LoadingSubtitle = "by Kien",
+	ConfigurationSaving = {Enabled = false}
+})
+
+local Tab = Window:CreateTab("Farm", 4483362458)
+
+-- SERVICES
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
--- AUTO QUEST
-local function getQuestNPC()
+-- SETTINGS
+local FARM = false
+local HEIGHT = 6
+local DELAY = 0.05
+
+-- COMBAT (GIỐNG HUB)
+local CombatFramework = require(player.PlayerScripts:WaitForChild("CombatFramework"))
+local Combat = CombatFramework.activeController
+
+-- TÌM NPC
+local function getNPC(char)
+	local nearest, dist = nil, math.huge
+	
 	for _,v in pairs(workspace:GetDescendants()) do
 		if v:IsA("Model")
-		and v:FindFirstChild("Head")
-		and v.Name:lower():find("quest") then
-			return v
+		and v:FindFirstChild("Humanoid")
+		and v:FindFirstChild("HumanoidRootPart")
+		and v.Humanoid.Health > 0
+		and not Players:GetPlayerFromCharacter(v) then
+			
+			local d = (char.HumanoidRootPart.Position - v.HumanoidRootPart.Position).Magnitude
+			
+			if d < dist then
+				dist = d
+				nearest = v
+			end
 		end
 	end
+	
+	return nearest
 end
 
-local function autoQuest()
-	local npc = getQuestNPC()
-	if not npc then return end
-	
-	local char = player.Character
-	if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-	
-	local root = char.HumanoidRootPart
-	
-	-- dịch tới NPC
-	root.CFrame = npc.Head.CFrame * CFrame.new(0,0,3)
-	
-	task.wait(0.5)
-	
-	-- gọi remote nhận quest
-	pcall(function()
-		game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("StartQuest", npc.Name, 1)
-	end)
+-- ATTACK THẬT (KHÔNG CLICK)
+local function attack()
+	if Combat and Combat.hitboxMagnitude then
+		Combat.hitboxMagnitude = 60 -- tăng tầm đánh
+		
+		-- attack thật
+		pcall(function()
+			Combat:attack()
+		end)
+	end
 end
 
 -- LOOP
 task.spawn(function()
+	local bv
+	
 	while true do
-		task.wait(3)
-		autoQuest()
+		task.wait(DELAY)
+		
+		if not FARM then
+			if bv then bv:Destroy() bv=nil end
+			continue
+		end
+		
+		local char = player.Character
+		if not char or not char:FindFirstChild("HumanoidRootPart") then continue end
+		
+		local root = char.HumanoidRootPart
+		local npc = getNPC(char)
+		
+		if npc then
+			local tRoot = npc.HumanoidRootPart
+			
+			-- BAY MƯỢT
+			if not bv then
+				bv = Instance.new("BodyVelocity")
+				bv.MaxForce = Vector3.new(1e9,1e9,1e9)
+				bv.Parent = root
+			end
+			
+			local pos = tRoot.Position + Vector3.new(0, HEIGHT, 0)
+			bv.Velocity = (pos - root.Position) * 6
+			
+			-- NHÌN
+			root.CFrame = CFrame.new(root.Position, tRoot.Position)
+			
+			-- 🔥 DAMAGE THẬT
+			attack()
+		end
 	end
 end)
+
+-- UI
+Tab:CreateToggle({
+	Name = "Auto Farm (Damage thật)",
+	CurrentValue = false,
+	Callback = function(v)
+		FARM = v
+	end
+})
