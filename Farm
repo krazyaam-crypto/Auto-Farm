@@ -15,6 +15,7 @@ local Tab = Window:CreateTab("Farm", 4483362458)
 -- SERVICES
 local Players = game:GetService("Players")
 local VirtualUser = game:GetService("VirtualUser")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local player = Players.LocalPlayer
 
@@ -23,7 +24,47 @@ local FARM = false
 local HEIGHT = 6
 local DELAY = 0.03
 
--- GET NPC
+-- 📜 AUTO QUEST
+local function getQuestNPC()
+	for _,v in pairs(workspace:GetDescendants()) do
+		if v:IsA("Model")
+		and v:FindFirstChild("Head")
+		and string.find(v.Name:lower(), "quest") then
+			return v
+		end
+	end
+end
+
+local function autoQuest()
+	local npc = getQuestNPC()
+	if not npc then return end
+	
+	local char = player.Character
+	if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+	
+	local root = char.HumanoidRootPart
+	
+	-- tới NPC
+	root.CFrame = npc.Head.CFrame * CFrame.new(0,0,3)
+	task.wait(0.5)
+	
+	-- nhận quest
+	pcall(function()
+		ReplicatedStorage.Remotes.CommF_:InvokeServer("StartQuest", npc.Name, 1)
+	end)
+end
+
+-- LOOP QUEST
+task.spawn(function()
+	while true do
+		task.wait(5)
+		if FARM then
+			autoQuest()
+		end
+	end
+end)
+
+-- GET NPC (đánh)
 local function getNPC(char)
 	local nearest, dist = nil, math.huge
 	
@@ -46,14 +87,14 @@ local function getNPC(char)
 	return nearest
 end
 
--- ATTACK (game input thật)
+-- ATTACK
 local function attack()
 	VirtualUser:Button1Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
 	task.wait()
 	VirtualUser:Button1Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
 end
 
--- LOOP
+-- LOOP FARM
 task.spawn(function()
 	local bv
 	
@@ -74,7 +115,7 @@ task.spawn(function()
 		if npc then
 			local tRoot = npc.HumanoidRootPart
 			
-			-- BAY MƯỢT (không rớt)
+			-- bay
 			if not bv then
 				bv = Instance.new("BodyVelocity")
 				bv.MaxForce = Vector3.new(1e9,1e9,1e9)
@@ -84,14 +125,14 @@ task.spawn(function()
 			local targetPos = tRoot.Position + Vector3.new(0, HEIGHT, 0)
 			bv.Velocity = (targetPos - root.Position) * 6
 			
-			-- NHÌN NPC
+			-- nhìn
 			root.CFrame = CFrame.new(root.Position, tRoot.Position)
 			
-			-- HITBOX NHẸ
+			-- hitbox
 			tRoot.Size = Vector3.new(10,10,10)
 			tRoot.CanCollide = false
 			
-			-- ⚡ ATTACK REAL
+			-- đánh
 			attack()
 		end
 	end
@@ -99,7 +140,7 @@ end)
 
 -- TOGGLE
 Tab:CreateToggle({
-	Name = "Auto Farm NPC",
+	Name = "Auto Farm + Quest",
 	CurrentValue = false,
 	Callback = function(Value)
 		FARM = Value
