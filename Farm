@@ -1,29 +1,83 @@
 repeat task.wait() until game:IsLoaded()
 
--- LOAD RAYFIELD (FIX)
-local Rayfield = loadstring(game:HttpGet('https://raw.githubusercontent.com/shlexware/Rayfield/main/source'))()
-
-local Window = Rayfield:CreateWindow({
-	Name = "Trung Kien Hub",
-	LoadingTitle = "Loading...",
-	LoadingSubtitle = "by Kien",
-	ConfigurationSaving = {Enabled = false}
-})
-
-local Tab = Window:CreateTab("Farm", 4483362458)
+pcall(function()
+	if game.CoreGui:FindFirstChild("KienHub_Custom") then
+		game.CoreGui.KienHub_Custom:Destroy()
+	end
+end)
 
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
--- COMBAT SAFE
+-- SETTINGS
+local FARM = false
+local HEIGHT = 6
+
+-- COMBAT
 local Combat
 pcall(function()
 	local cf = require(player.PlayerScripts:WaitForChild("CombatFramework"))
 	Combat = cf.activeController
 end)
 
-local FARM = false
-local HEIGHT = 6
+-- UI
+local gui = Instance.new("ScreenGui", game.CoreGui)
+gui.Name = "KienHub_Custom"
+
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0,260,0,140)
+frame.Position = UDim2.new(0.05,0,0.3,0)
+frame.BackgroundColor3 = Color3.fromRGB(20,20,20)
+frame.Active = true
+frame.Draggable = true
+Instance.new("UICorner", frame)
+
+-- Rainbow viền
+local stroke = Instance.new("UIStroke", frame)
+stroke.Thickness = 3
+task.spawn(function()
+	while true do
+		for i=0,1,0.01 do
+			stroke.Color = Color3.fromHSV(i,1,1)
+			task.wait()
+		end
+	end
+end)
+
+-- Title
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1,0,0.3,0)
+title.BackgroundTransparency = 1
+title.Text = "Trung Kien Hub"
+title.TextColor3 = Color3.new(1,1,1)
+title.Font = Enum.Font.GothamBold
+title.TextScaled = true
+
+-- Button
+local btn = Instance.new("TextButton", frame)
+btn.Size = UDim2.new(0.8,0,0.35,0)
+btn.Position = UDim2.new(0.1,0,0.5,0)
+btn.Text = "AUTO FARM: OFF"
+btn.BackgroundColor3 = Color3.fromRGB(40,40,40)
+btn.TextColor3 = Color3.new(1,1,1)
+btn.Font = Enum.Font.GothamBold
+Instance.new("UICorner", btn)
+
+-- Notification (góc phải dưới)
+local notify = Instance.new("TextLabel", gui)
+notify.Size = UDim2.new(0,220,0,40)
+notify.Position = UDim2.new(1,-230,1,-50)
+notify.BackgroundColor3 = Color3.fromRGB(25,25,25)
+notify.TextColor3 = Color3.new(1,1,1)
+notify.Font = Enum.Font.GothamBold
+notify.TextSize = 14
+notify.Text = "Script Load 100%"
+Instance.new("UICorner", notify)
+
+-- Ẩn sau 5s
+task.delay(5, function()
+	notify:Destroy()
+end)
 
 -- FIND NPC
 local function getNPC(char)
@@ -47,7 +101,7 @@ local function getNPC(char)
 	return nearest
 end
 
--- LOOP
+-- LOOP FARM
 task.spawn(function()
 	local bv
 	
@@ -68,6 +122,7 @@ task.spawn(function()
 		if npc then
 			local tRoot = npc.HumanoidRootPart
 			
+			-- bay mượt
 			if not bv then
 				bv = Instance.new("BodyVelocity")
 				bv.MaxForce = Vector3.new(1e9,1e9,1e9)
@@ -77,8 +132,10 @@ task.spawn(function()
 			local pos = tRoot.Position + Vector3.new(0, HEIGHT, 0)
 			bv.Velocity = (pos - root.Position) * 6
 			
+			-- nhìn
 			root.CFrame = CFrame.new(root.Position, tRoot.Position)
 			
+			-- damage thật
 			if Combat then
 				Combat.hitboxMagnitude = 40
 				pcall(function()
@@ -89,19 +146,8 @@ task.spawn(function()
 	end
 end)
 
--- 🔥 NÚT (CHẮC CHẮN HIỆN)
-Tab:CreateToggle({
-	Name = "Auto Farm NPC",
-	CurrentValue = false,
-	Callback = function(v)
-		FARM = v
-	end
-})
-
--- 🔥 NOTIFY
-task.wait(1)
-Rayfield:Notify({
-	Title = "Trung Kien Hub",
-	Content = "Script Load 100%",
-	Duration = 5
-})
+-- BUTTON
+btn.MouseButton1Click:Connect(function()
+	FARM = not FARM
+	btn.Text = "AUTO FARM: "..(FARM and "ON" or "OFF")
+end)
