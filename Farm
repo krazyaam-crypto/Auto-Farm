@@ -1,4 +1,6 @@
--- LOAD RAYFIELD
+repeat task.wait() until game:IsLoaded()
+
+-- LOAD UI
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
@@ -8,22 +10,24 @@ local Window = Rayfield:CreateWindow({
 	ConfigurationSaving = {Enabled = false}
 })
 
-local Tab = Window:CreateTab("Farm", 4483362458)
+local Tab = Window:CreateTab("Farm")
 
 -- SERVICES
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
+-- SAFE COMBAT
+local Combat
+pcall(function()
+	local cf = require(player.PlayerScripts:WaitForChild("CombatFramework"))
+	Combat = cf.activeController
+end)
+
 -- SETTINGS
 local FARM = false
 local HEIGHT = 6
-local DELAY = 0.05
 
--- COMBAT (GIỐNG HUB)
-local CombatFramework = require(player.PlayerScripts:WaitForChild("CombatFramework"))
-local Combat = CombatFramework.activeController
-
--- TÌM NPC
+-- FIND NPC
 local function getNPC(char)
 	local nearest, dist = nil, math.huge
 	
@@ -35,7 +39,6 @@ local function getNPC(char)
 		and not Players:GetPlayerFromCharacter(v) then
 			
 			local d = (char.HumanoidRootPart.Position - v.HumanoidRootPart.Position).Magnitude
-			
 			if d < dist then
 				dist = d
 				nearest = v
@@ -46,24 +49,12 @@ local function getNPC(char)
 	return nearest
 end
 
--- ATTACK THẬT (KHÔNG CLICK)
-local function attack()
-	if Combat and Combat.hitboxMagnitude then
-		Combat.hitboxMagnitude = 60 -- tăng tầm đánh
-		
-		-- attack thật
-		pcall(function()
-			Combat:attack()
-		end)
-	end
-end
-
 -- LOOP
 task.spawn(function()
 	local bv
 	
 	while true do
-		task.wait(DELAY)
+		task.wait(0.05)
 		
 		if not FARM then
 			if bv then bv:Destroy() bv=nil end
@@ -79,7 +70,6 @@ task.spawn(function()
 		if npc then
 			local tRoot = npc.HumanoidRootPart
 			
-			-- BAY MƯỢT
 			if not bv then
 				bv = Instance.new("BodyVelocity")
 				bv.MaxForce = Vector3.new(1e9,1e9,1e9)
@@ -89,20 +79,33 @@ task.spawn(function()
 			local pos = tRoot.Position + Vector3.new(0, HEIGHT, 0)
 			bv.Velocity = (pos - root.Position) * 6
 			
-			-- NHÌN
 			root.CFrame = CFrame.new(root.Position, tRoot.Position)
 			
-			-- 🔥 DAMAGE THẬT
-			attack()
+			if Combat then
+				Combat.hitboxMagnitude = 40
+				pcall(function()
+					Combat:attack()
+				end)
+			end
 		end
 	end
 end)
 
--- UI
+-- TOGGLE
 Tab:CreateToggle({
-	Name = "Auto Farm (Damage thật)",
+	Name = "Auto Farm NPC",
 	CurrentValue = false,
 	Callback = function(v)
 		FARM = v
 	end
+})
+
+-- 🔥 THÔNG BÁO LOAD XONG
+task.wait(1)
+
+Rayfield:Notify({
+	Title = "Trung Kien Hub",
+	Content = "Script Load 100%",
+	Duration = 5,
+	Image = 4483362458
 })
