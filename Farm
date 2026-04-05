@@ -1,85 +1,35 @@
-repeat task.wait() until game:IsLoaded()
+-- LOAD RAYFIELD
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
-pcall(function()
-	if game.CoreGui:FindFirstChild("KienHub_Custom") then
-		game.CoreGui.KienHub_Custom:Destroy()
-	end
-end)
+local Window = Rayfield:CreateWindow({
+	Name = "Trung Kien Hub",
+	LoadingTitle = "Loading...",
+	LoadingSubtitle = "by Kien",
+	ConfigurationSaving = {
+		Enabled = false
+	}
+})
 
+local Tab = Window:CreateTab("Farm", 4483362458)
+
+-- SERVICES
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
--- SETTINGS
-local FARM = false
-local HEIGHT = 6
-
--- COMBAT
+-- COMBAT (THẬT)
 local Combat
 pcall(function()
 	local cf = require(player.PlayerScripts:WaitForChild("CombatFramework"))
 	Combat = cf.activeController
 end)
 
--- UI
-local gui = Instance.new("ScreenGui", game.CoreGui)
-gui.Name = "KienHub_Custom"
+-- SETTINGS
+local FARM = false
+local HEIGHT = 6
+local DELAY = 0.03
+local MAGNET_RANGE = 10
 
-local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0,260,0,140)
-frame.Position = UDim2.new(0.05,0,0.3,0)
-frame.BackgroundColor3 = Color3.fromRGB(20,20,20)
-frame.Active = true
-frame.Draggable = true
-Instance.new("UICorner", frame)
-
--- Rainbow viền
-local stroke = Instance.new("UIStroke", frame)
-stroke.Thickness = 3
-task.spawn(function()
-	while true do
-		for i=0,1,0.01 do
-			stroke.Color = Color3.fromHSV(i,1,1)
-			task.wait()
-		end
-	end
-end)
-
--- Title
-local title = Instance.new("TextLabel", frame)
-title.Size = UDim2.new(1,0,0.3,0)
-title.BackgroundTransparency = 1
-title.Text = "Trung Kien Hub"
-title.TextColor3 = Color3.new(1,1,1)
-title.Font = Enum.Font.GothamBold
-title.TextScaled = true
-
--- Button
-local btn = Instance.new("TextButton", frame)
-btn.Size = UDim2.new(0.8,0,0.35,0)
-btn.Position = UDim2.new(0.1,0,0.5,0)
-btn.Text = "AUTO FARM: OFF"
-btn.BackgroundColor3 = Color3.fromRGB(40,40,40)
-btn.TextColor3 = Color3.new(1,1,1)
-btn.Font = Enum.Font.GothamBold
-Instance.new("UICorner", btn)
-
--- Notification (góc phải dưới)
-local notify = Instance.new("TextLabel", gui)
-notify.Size = UDim2.new(0,220,0,40)
-notify.Position = UDim2.new(1,-230,1,-50)
-notify.BackgroundColor3 = Color3.fromRGB(25,25,25)
-notify.TextColor3 = Color3.new(1,1,1)
-notify.Font = Enum.Font.GothamBold
-notify.TextSize = 14
-notify.Text = "Script Load 100%"
-Instance.new("UICorner", notify)
-
--- Ẩn sau 5s
-task.delay(5, function()
-	notify:Destroy()
-end)
-
--- FIND NPC
+-- GET NPC
 local function getNPC(char)
 	local nearest, dist = nil, math.huge
 	
@@ -91,6 +41,7 @@ local function getNPC(char)
 		and not Players:GetPlayerFromCharacter(v) then
 			
 			local d = (char.HumanoidRootPart.Position - v.HumanoidRootPart.Position).Magnitude
+			
 			if d < dist then
 				dist = d
 				nearest = v
@@ -101,12 +52,12 @@ local function getNPC(char)
 	return nearest
 end
 
--- LOOP FARM
+-- LOOP
 task.spawn(function()
 	local bv
 	
 	while true do
-		task.wait(0.05)
+		task.wait(DELAY)
 		
 		if not FARM then
 			if bv then bv:Destroy() bv=nil end
@@ -122,32 +73,50 @@ task.spawn(function()
 		if npc then
 			local tRoot = npc.HumanoidRootPart
 			
-			-- bay mượt
+			-- 🕊️ BAY MƯỢT
 			if not bv then
 				bv = Instance.new("BodyVelocity")
 				bv.MaxForce = Vector3.new(1e9,1e9,1e9)
 				bv.Parent = root
 			end
 			
-			local pos = tRoot.Position + Vector3.new(0, HEIGHT, 0)
-			bv.Velocity = (pos - root.Position) * 6
+			local targetPos = tRoot.Position + Vector3.new(0, HEIGHT, 0)
+			bv.Velocity = (targetPos - root.Position) * 6
 			
-			-- nhìn
+			-- 🎯 NHÌN NPC
 			root.CFrame = CFrame.new(root.Position, tRoot.Position)
 			
-			-- damage thật
+			-- 📏 HIT XA
 			if Combat then
 				Combat.hitboxMagnitude = 40
 				pcall(function()
 					Combat:attack()
 				end)
 			end
+			
+			-- 🧲 MAGNET QUÁI
+			for _,v in pairs(workspace:GetDescendants()) do
+				if v:IsA("Model")
+				and v ~= npc
+				and v:FindFirstChild("HumanoidRootPart")
+				and v:FindFirstChild("Humanoid")
+				and v.Humanoid.Health > 0
+				and not Players:GetPlayerFromCharacter(v) then
+					
+					if (v.HumanoidRootPart.Position - tRoot.Position).Magnitude < MAGNET_RANGE then
+						v.HumanoidRootPart.CFrame = tRoot.CFrame
+					end
+				end
+			end
 		end
 	end
 end)
 
--- BUTTON
-btn.MouseButton1Click:Connect(function()
-	FARM = not FARM
-	btn.Text = "AUTO FARM: "..(FARM and "ON" or "OFF")
-end)
+-- TOGGLE
+Tab:CreateToggle({
+	Name = "Auto Farm NPC",
+	CurrentValue = false,
+	Callback = function(Value)
+		FARM = Value
+	end
+})
