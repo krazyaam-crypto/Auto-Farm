@@ -5,9 +5,7 @@ local Window = Rayfield:CreateWindow({
 	Name = "Trung Kien Hub",
 	LoadingTitle = "Loading...",
 	LoadingSubtitle = "by Kien",
-	ConfigurationSaving = {
-		Enabled = false
-	}
+	ConfigurationSaving = {Enabled = false}
 })
 
 local Tab = Window:CreateTab("Farm", 4483362458)
@@ -24,7 +22,16 @@ local FARM = false
 local HEIGHT = 6
 local DELAY = 0.03
 
--- 📜 AUTO QUEST
+-- 📜 CHECK QUEST
+local function hasQuest()
+	local gui = player.PlayerGui:FindFirstChild("Main")
+	if gui and gui:FindFirstChild("Quest") then
+		return gui.Quest.Visible
+	end
+	return false
+end
+
+-- 📜 GET QUEST NPC
 local function getQuestNPC()
 	for _,v in pairs(workspace:GetDescendants()) do
 		if v:IsA("Model")
@@ -35,7 +42,10 @@ local function getQuestNPC()
 	end
 end
 
+-- 📜 AUTO QUEST (CHỈ KHI CHƯA CÓ)
 local function autoQuest()
+	if hasQuest() then return end -- 🔥 FIX CHÍNH
+	
 	local npc = getQuestNPC()
 	if not npc then return end
 	
@@ -44,11 +54,9 @@ local function autoQuest()
 	
 	local root = char.HumanoidRootPart
 	
-	-- tới NPC
 	root.CFrame = npc.Head.CFrame * CFrame.new(0,0,3)
 	task.wait(0.5)
 	
-	-- nhận quest
 	pcall(function()
 		ReplicatedStorage.Remotes.CommF_:InvokeServer("StartQuest", npc.Name, 1)
 	end)
@@ -57,14 +65,14 @@ end
 -- LOOP QUEST
 task.spawn(function()
 	while true do
-		task.wait(5)
+		task.wait(2)
 		if FARM then
 			autoQuest()
 		end
 	end
 end)
 
--- GET NPC (đánh)
+-- 👹 FIND NPC (QUÁI)
 local function getNPC(char)
 	local nearest, dist = nil, math.huge
 	
@@ -73,7 +81,8 @@ local function getNPC(char)
 		and v:FindFirstChild("Humanoid")
 		and v:FindFirstChild("HumanoidRootPart")
 		and v.Humanoid.Health > 0
-		and not Players:GetPlayerFromCharacter(v) then
+		and not Players:GetPlayerFromCharacter(v)
+		and not string.find(v.Name:lower(), "quest") then -- ❌ bỏ NPC quest
 			
 			local d = (char.HumanoidRootPart.Position - v.HumanoidRootPart.Position).Magnitude
 			
@@ -110,12 +119,15 @@ task.spawn(function()
 		if not char or not char:FindFirstChild("HumanoidRootPart") then continue end
 		
 		local root = char.HumanoidRootPart
+		
+		-- 🔥 nếu chưa có quest → không farm
+		if not hasQuest() then continue end
+		
 		local npc = getNPC(char)
 		
 		if npc then
 			local tRoot = npc.HumanoidRootPart
 			
-			-- bay
 			if not bv then
 				bv = Instance.new("BodyVelocity")
 				bv.MaxForce = Vector3.new(1e9,1e9,1e9)
@@ -125,14 +137,11 @@ task.spawn(function()
 			local targetPos = tRoot.Position + Vector3.new(0, HEIGHT, 0)
 			bv.Velocity = (targetPos - root.Position) * 6
 			
-			-- nhìn
 			root.CFrame = CFrame.new(root.Position, tRoot.Position)
 			
-			-- hitbox
 			tRoot.Size = Vector3.new(10,10,10)
 			tRoot.CanCollide = false
 			
-			-- đánh
 			attack()
 		end
 	end
@@ -140,7 +149,7 @@ end)
 
 -- TOGGLE
 Tab:CreateToggle({
-	Name = "Auto Farm + Quest",
+	Name = "Auto Farm + Quest FIX",
 	CurrentValue = false,
 	Callback = function(Value)
 		FARM = Value
