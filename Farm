@@ -1,0 +1,108 @@
+pcall(function()
+	if game.CoreGui:FindFirstChild("AutoFarmUI") then
+		game.CoreGui.AutoFarmUI:Destroy()
+	end
+end)
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local char = player.Character or player.CharacterAdded:Wait()
+
+-- SETTINGS
+local ENABLE = false
+local MAGNET_RANGE = 10
+
+-- GUI
+local gui = Instance.new("ScreenGui", game.CoreGui)
+gui.Name = "AutoFarmUI"
+
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0,200,0,100)
+frame.Position = UDim2.new(0.05,0,0.3,0)
+frame.BackgroundColor3 = Color3.fromRGB(20,20,20)
+frame.Active = true
+frame.Draggable = true
+Instance.new("UICorner", frame)
+
+local btn = Instance.new("TextButton", frame)
+btn.Size = UDim2.new(0.9,0,0.6,0)
+btn.Position = UDim2.new(0.05,0,0.2,0)
+btn.Text = "AUTO FARM: OFF"
+btn.BackgroundColor3 = Color3.fromRGB(40,40,40)
+btn.TextColor3 = Color3.new(1,1,1)
+btn.Font = Enum.Font.GothamBold
+Instance.new("UICorner", btn)
+
+-- Tìm NPC gần
+local function getNPCs()
+	local list = {}
+	
+	for _,v in pairs(workspace:GetDescendants()) do
+		if v:IsA("Model")
+		and v:FindFirstChild("Humanoid")
+		and v:FindFirstChild("HumanoidRootPart")
+		and v.Humanoid.Health > 0
+		and not Players:GetPlayerFromCharacter(v) then
+			
+			table.insert(list, v)
+		end
+	end
+	
+	return list
+end
+
+-- LOOP FARM
+RunService.RenderStepped:Connect(function()
+	if not ENABLE then return end
+	
+	char = player.Character or player.CharacterAdded:Wait()
+	local root = char:FindFirstChild("HumanoidRootPart")
+	if not root then return end
+	
+	local npcs = getNPCs()
+	
+	-- chọn con gần nhất
+	local target = nil
+	local dist = math.huge
+	
+	for _,npc in pairs(npcs) do
+		local d = (root.Position - npc.HumanoidRootPart.Position).Magnitude
+		if d < dist then
+			dist = d
+			target = npc
+		end
+	end
+	
+	if target then
+		local tRoot = target.HumanoidRootPart
+		
+		-- bay trên đầu
+		root.CFrame = tRoot.CFrame * CFrame.new(0, 10, 0)
+		
+		-- gom quái
+		for _,npc in pairs(npcs) do
+			if npc ~= target then
+				local hrp = npc.HumanoidRootPart
+				if (hrp.Position - tRoot.Position).Magnitude < MAGNET_RANGE then
+					hrp.CFrame = tRoot.CFrame * CFrame.new(math.random(-2,2),0,math.random(-2,2))
+				end
+			end
+		end
+		
+		-- nhìn xuống quái
+		root.CFrame = CFrame.new(root.Position, tRoot.Position)
+		
+		-- đánh thường
+		pcall(function()
+			mouse1click()
+		end)
+	end
+end)
+
+-- BUTTON
+btn.MouseButton1Click:Connect(function()
+	ENABLE = not ENABLE
+	btn.Text = "AUTO FARM: "..(ENABLE and "ON" or "OFF")
+end)
