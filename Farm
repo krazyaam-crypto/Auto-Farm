@@ -5,14 +5,13 @@ pcall(function()
 end)
 
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-
 local player = Players.LocalPlayer
-local char = player.Character or player.CharacterAdded:Wait()
 
 -- SETTINGS
 local ENABLE = false
 local MAGNET_RANGE = 10
+local ATTACK_DELAY = 0.05 -- nhanh hơn
+local HEIGHT = 12 -- bay cao
 
 -- GUI
 local gui = Instance.new("ScreenGui", game.CoreGui)
@@ -35,9 +34,9 @@ btn.TextColor3 = Color3.new(1,1,1)
 btn.Font = Enum.Font.GothamBold
 Instance.new("UICorner", btn)
 
--- Tìm NPC gần
-local function getNPCs()
-	local list = {}
+-- Tìm NPC gần nhất
+local function getNearestNPC(char)
+	local nearest, dist = nil, math.huge
 	
 	for _,v in pairs(workspace:GetDescendants()) do
 		if v:IsA("Model")
@@ -46,58 +45,64 @@ local function getNPCs()
 		and v.Humanoid.Health > 0
 		and not Players:GetPlayerFromCharacter(v) then
 			
-			table.insert(list, v)
-		end
-	end
-	
-	return list
-end
-
--- LOOP FARM
-RunService.RenderStepped:Connect(function()
-	if not ENABLE then return end
-	
-	char = player.Character or player.CharacterAdded:Wait()
-	local root = char:FindFirstChild("HumanoidRootPart")
-	if not root then return end
-	
-	local npcs = getNPCs()
-	
-	-- chọn con gần nhất
-	local target = nil
-	local dist = math.huge
-	
-	for _,npc in pairs(npcs) do
-		local d = (root.Position - npc.HumanoidRootPart.Position).Magnitude
-		if d < dist then
-			dist = d
-			target = npc
-		end
-	end
-	
-	if target then
-		local tRoot = target.HumanoidRootPart
-		
-		-- bay trên đầu
-		root.CFrame = tRoot.CFrame * CFrame.new(0, 10, 0)
-		
-		-- gom quái
-		for _,npc in pairs(npcs) do
-			if npc ~= target then
-				local hrp = npc.HumanoidRootPart
-				if (hrp.Position - tRoot.Position).Magnitude < MAGNET_RANGE then
-					hrp.CFrame = tRoot.CFrame * CFrame.new(math.random(-2,2),0,math.random(-2,2))
-				end
+			local d = (char.HumanoidRootPart.Position - v.HumanoidRootPart.Position).Magnitude
+			if d < dist then
+				dist = d
+				nearest = v
 			end
 		end
+	end
+	
+	return nearest
+end
+
+-- LOOP FARM (ổn định)
+task.spawn(function()
+	while true do
+		task.wait(ATTACK_DELAY)
 		
-		-- nhìn xuống quái
-		root.CFrame = CFrame.new(root.Position, tRoot.Position)
+		if not ENABLE then continue end
 		
-		-- đánh thường
-		pcall(function()
-			mouse1click()
-		end)
+		local char = player.Character
+		if not char or not char:FindFirstChild("HumanoidRootPart") then continue end
+		
+		local root = char.HumanoidRootPart
+		local target = getNearestNPC(char)
+		
+		if target and target:FindFirstChild("HumanoidRootPart") then
+			local tRoot = target.HumanoidRootPart
+			
+			-- 🕊️ bay trên đầu
+			root.CFrame = tRoot.CFrame * CFrame.new(0, HEIGHT, 0)
+			
+			-- 🧲 gom quái
+			for _,v in pairs(workspace:GetDescendants()) do
+				if v:IsA("Model")
+				and v ~= target
+				and v:FindFirstChild("HumanoidRootPart")
+				and v:FindFirstChild("Humanoid")
+				and v.Humanoid.Health > 0
+				and not Players:GetPlayerFromCharacter(v) then
+					
+					if (v.HumanoidRootPart.Position - tRoot.Position).Magnitude < MAGNET_RANGE then
+						v.HumanoidRootPart.CFrame = tRoot.CFrame * CFrame.new(math.random(-3,3),0,math.random(-3,3))
+					end
+				end
+			end
+			
+			-- 🎯 nhìn vào quái
+			root.CFrame = CFrame.new(root.Position, tRoot.Position)
+			
+			-- 📏 mở rộng hitbox (đánh xa hơn)
+			tRoot.Size = Vector3.new(20,20,20)
+			tRoot.Transparency = 0.5
+			tRoot.CanCollide = false
+			
+			-- ⚡ đánh nhanh
+			pcall(function()
+				mouse1click()
+			end)
+		end
 	end
 end)
 
