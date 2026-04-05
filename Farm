@@ -14,20 +14,14 @@ local Tab = Window:CreateTab("Farm", 4483362458)
 
 -- SERVICES
 local Players = game:GetService("Players")
-local player = Players.LocalPlayer
+local VirtualUser = game:GetService("VirtualUser")
 
--- COMBAT (THẬT)
-local Combat
-pcall(function()
-	local cf = require(player.PlayerScripts:WaitForChild("CombatFramework"))
-	Combat = cf.activeController
-end)
+local player = Players.LocalPlayer
 
 -- SETTINGS
 local FARM = false
 local HEIGHT = 6
 local DELAY = 0.03
-local MAGNET_RANGE = 10
 
 -- GET NPC
 local function getNPC(char)
@@ -52,6 +46,13 @@ local function getNPC(char)
 	return nearest
 end
 
+-- ATTACK (game input thật)
+local function attack()
+	VirtualUser:Button1Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+	task.wait()
+	VirtualUser:Button1Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+end
+
 -- LOOP
 task.spawn(function()
 	local bv
@@ -73,7 +74,7 @@ task.spawn(function()
 		if npc then
 			local tRoot = npc.HumanoidRootPart
 			
-			-- 🕊️ BAY MƯỢT
+			-- BAY MƯỢT (không rớt)
 			if not bv then
 				bv = Instance.new("BodyVelocity")
 				bv.MaxForce = Vector3.new(1e9,1e9,1e9)
@@ -83,31 +84,15 @@ task.spawn(function()
 			local targetPos = tRoot.Position + Vector3.new(0, HEIGHT, 0)
 			bv.Velocity = (targetPos - root.Position) * 6
 			
-			-- 🎯 NHÌN NPC
+			-- NHÌN NPC
 			root.CFrame = CFrame.new(root.Position, tRoot.Position)
 			
-			-- 📏 HIT XA
-			if Combat then
-				Combat.hitboxMagnitude = 40
-				pcall(function()
-					Combat:attack()
-				end)
-			end
+			-- HITBOX NHẸ
+			tRoot.Size = Vector3.new(10,10,10)
+			tRoot.CanCollide = false
 			
-			-- 🧲 MAGNET QUÁI
-			for _,v in pairs(workspace:GetDescendants()) do
-				if v:IsA("Model")
-				and v ~= npc
-				and v:FindFirstChild("HumanoidRootPart")
-				and v:FindFirstChild("Humanoid")
-				and v.Humanoid.Health > 0
-				and not Players:GetPlayerFromCharacter(v) then
-					
-					if (v.HumanoidRootPart.Position - tRoot.Position).Magnitude < MAGNET_RANGE then
-						v.HumanoidRootPart.CFrame = tRoot.CFrame
-					end
-				end
-			end
+			-- ⚡ ATTACK REAL
+			attack()
 		end
 	end
 end)
